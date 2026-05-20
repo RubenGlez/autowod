@@ -3,3 +3,4 @@ minimumReleaseAge: 1440
 allowBuilds:
   esbuild: true
   puppeteer: true
+  unrs-resolver: true
