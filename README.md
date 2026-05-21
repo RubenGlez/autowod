@@ -71,6 +71,8 @@ TUESDAY=18:00|Endurance
 | Name | Value | Meaning |
 |------|-------|---------|
 | `AVAILABLE_DAYS` | `7` | Book up to 7 days in advance (default if not set) |
+| `BOOKING_FREQUENCY` | `daily` | Use `daily` to try every day, or `weekly` to book only once per week |
+| `BOOKING_WEEKDAY` | `sunday` | Used with `BOOKING_FREQUENCY=weekly`; choose `monday` through `sunday` |
 
 ### 4. Get a 2Captcha API key
 
@@ -85,7 +87,7 @@ The tool needs this to handle the login security check automatically.
 1. Click the **Actions** tab in your forked repository
 2. If prompted, click **I understand my workflows, go ahead and enable them**
 
-That's it! The tool will now run automatically every evening around 22:30 Spain time.
+That's it! By default, the tool will now run automatically every evening around 22:30 Spain time.
 
 ---
 
@@ -107,14 +109,24 @@ Go to **Settings → Secrets and variables → Actions → Variables tab**, clic
 
 ## My gym opens all reservations on one day
 
-Some gyms release the full week's schedule at once (e.g. every Sunday). Instead of running daily, you can trigger the tool manually:
+Some gyms release the full week's schedule at once (e.g. every Sunday). In that case, set these repository variables:
+
+| Name | Value example |
+|------|---------------|
+| `BOOKING_FREQUENCY` | `weekly` |
+| `BOOKING_WEEKDAY` | `sunday` |
+| `AVAILABLE_DAYS` | `7` |
+
+The workflow still wakes up every day because GitHub Actions schedules cannot be changed by repository variables, but AutoWOD will skip immediately on the other days before installing dependencies or solving any CAPTCHA.
+
+You can also trigger the tool manually whenever you need:
 
 1. Go to **Actions → Daily Reservation**
 2. Click **Run workflow** (top right)
 3. In the *Days to book ahead* field, enter the number of days you want to cover (e.g. `7`)
 4. Click **Run workflow**
 
-This books everything in one go.
+Manual runs always run immediately, even when `BOOKING_FREQUENCY=weekly`.
 
 ---
 
