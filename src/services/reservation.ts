@@ -268,8 +268,19 @@ export async function processReservations(
       other++;
     }
 
-    const isLastDay = i === availableDays - 1;
-    if (!isLastDay) await goToNextDay(page);
+    if (i === availableDays - 1) break;
+
+    // The gym only opens reservations a few days ahead. Past that horizon the
+    // calendar's "next" control no longer advances the date, so stop instead
+    // of re-processing — and re-booking — the same last day.
+    const dateBefore = getISODateFromUrl(page);
+    await goToNextDay(page);
+    if (getISODateFromUrl(page) === dateBefore) {
+      console.log(
+        `📆 ${dateBefore} is the last bookable day for now — stopping.`
+      );
+      break;
+    }
   }
 
   console.log(
