@@ -5,16 +5,27 @@ import { join } from 'path';
 
 const solver = new Solver(process.env.TWO_CAPTCHA_API_KEY ?? '');
 
-async function waitForCaptchaAndSolve(page: Page): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
+// How long to wait for a Turnstile widget to render before assuming the page
+// has none. WODBuster dropped the login-page captcha in June 2026, so the
+// common case is no widget at all — we wait briefly, then proceed to login.
+const CAPTCHA_DETECT_MS = 15000;
+
+// Resolves true if a captcha was detected and solved, false if none appeared
+// within the detection window. Only rejects if solving a present captcha fails.
+async function waitForCaptchaAndSolve(page: Page): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
     const timeout = setTimeout(() => {
       page.off('console', handleConsole);
-      reject(new Error('Captcha solution timeout after 60 seconds'));
-    }, 60000);
+      resolve(false);
+    }, CAPTCHA_DETECT_MS);
 
     const handleConsole = async (msg: ConsoleMessage) => {
       const txt = msg.text();
       if (txt.includes('intercepted-params:')) {
+        // A widget rendered — stop the detection timer; solving has its own
+        // bound via the 2Captcha solver.
+        clearTimeout(timeout);
+        page.off('console', handleConsole);
         try {
           const params = JSON.parse(txt.replace('intercepted-params:', ''));
           console.log('Captcha params intercepted:', params);
@@ -33,12 +44,8 @@ async function waitForCaptchaAndSolve(page: Page): Promise<void> {
           // to be processed before we proceed to the login form.
           await page.waitForNetworkIdle({ timeout: 5000 }).catch(() => {});
 
-          clearTimeout(timeout);
-          page.off('console', handleConsole);
-          resolve();
+          resolve(true);
         } catch (e) {
-          clearTimeout(timeout);
-          page.off('console', handleConsole);
           reject(e);
         }
       }
@@ -62,7 +69,12 @@ export async function solveCaptchaFlow(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       await page.goto(url);
-      await waitForCaptchaAndSolve(page);
+      const solved = await waitForCaptchaAndSolve(page);
+      console.log(
+        solved
+          ? 'Captcha solved.'
+          : 'No captcha detected — proceeding to login.'
+      );
       return;
     } catch (e) {
       if (attempt === maxAttempts) throw e;
