@@ -46,4 +46,8 @@ debug/
 
 # Booking state (persisted via GitHub Actions cache, not committed)
 booking-state.json
-.harness/
+
+# doctier:begin — managed by 'doctier init', do not edit
+**/_prototype-*
+**/_spike/**
+# doctier:end
