@@ -14,3 +14,7 @@ Read these for project context:
 - `.harness/product/product.md`
 - `.harness/product/roadmap.md`
 <!-- doctier:end -->
+
+## Release
+
+There is no deploy step. The bot runs from GitHub Actions on a cron schedule (`daily-reservation.yml`); merging to `main` is what reaches production. "Shipping" means cutting a release: keep `package.json` `version` in sync, add a `CHANGELOG.md` entry, then create an annotated `vX.Y.Z` tag and push it. No tag-triggered pipeline exists, so a tag is a marker, not a trigger.
