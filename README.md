@@ -107,6 +107,18 @@ Go to **Settings → Secrets and variables → Actions → Variables tab**, clic
 
 ---
 
+## Updating to the latest version
+
+AutoWOD improves over time. Because you're running your own fork, updates don't reach you automatically — you pull them in with one click.
+
+1. Go to your forked repository's main page
+2. If your fork is behind, GitHub shows a **This branch is X commits behind** notice near the top
+3. Click **Sync fork**, then **Update branch**
+
+Your secrets and schedule variables are stored separately in your repository settings, so syncing never touches them. The next scheduled run uses the updated code.
+
+---
+
 ## My gym opens all reservations on one day
 
 Some gyms release the full week's schedule at once (e.g. every Sunday). In that case, set these repository variables:
