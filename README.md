@@ -173,14 +173,6 @@ Manual runs always run immediately, even when `BOOKING_FREQUENCY=weekly`.
 
 ---
 
-## Support the project
-
-If AutoWOD saves you the hassle of booking your classes every day, consider buying me a coffee! It helps me keep the project maintained and free for everyone. ☕
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/rubenglez)
-
----
-
 ## Disclaimer
 
 This tool is designed for WODBuster-powered gyms. Please make sure you have permission from your gym to automate bookings, and use it responsibly in line with their booking policies.
