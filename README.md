@@ -3,8 +3,6 @@
 [![Daily Reservation](https://github.com/RubenGlez/autowod/actions/workflows/daily-reservation.yml/badge.svg)](https://github.com/RubenGlez/autowod/actions/workflows/daily-reservation.yml)
 [![CI](https://github.com/RubenGlez/autowod/actions/workflows/ci.yml/badge.svg)](https://github.com/RubenGlez/autowod/actions/workflows/ci.yml)
 
-**Project page:** [rubenglez.dev/autowod](https://rubenglez.dev/autowod)
-
 Automatically books your workout sessions on [WODBuster](https://wodbuster.com/) — the booking platform used by many CrossFit gyms. Once set up, it runs every day in the cloud so you never have to worry about grabbing a spot.
 
 > **Is your gym on WODBuster?** Check your gym's booking page URL. If it contains `wodbuster.com`, you're good to go.
