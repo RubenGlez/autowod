@@ -13,7 +13,6 @@ Automatically books your workout sessions on [WODBuster](https://wodbuster.com/)
 
 - A GitHub account (free) — [sign up here](https://github.com/join) if you don't have one
 - Your WODBuster login email and password
-- A 2Captcha API key (costs less than $1/month) — [see step 4 below](#4-get-a-2captcha-api-key)
 
 ---
 
@@ -36,7 +35,6 @@ Secrets are for sensitive information like your password. GitHub keeps them encr
 |------|-------|
 | `EMAIL` | Your WODBuster login email |
 | `PASSWORD` | Your WODBuster password |
-| `TWO_CAPTCHA_API_KEY` | Your 2Captcha API key (see step 4) |
 
 ### 3. Set your weekly schedule
 
@@ -74,15 +72,7 @@ TUESDAY=18:00|Endurance
 | `BOOKING_FREQUENCY` | `daily` | Use `daily` to try every day, or `weekly` to book only once per week |
 | `BOOKING_WEEKDAY` | `sunday` | Used with `BOOKING_FREQUENCY=weekly`; choose `monday` through `sunday` |
 
-### 4. Get a 2Captcha API key
-
-The tool needs this to handle the login security check automatically.
-
-1. Go to [2captcha.com](https://2captcha.com) and create a free account
-2. Add a small amount of credit (minimum ~$3, lasts months at ~$0.001 per run)
-3. Copy your API key from the dashboard and add it as the `TWO_CAPTCHA_API_KEY` secret
-
-### 5. Enable GitHub Actions
+### 4. Enable GitHub Actions
 
 1. Click the **Actions** tab in your forked repository
 2. If prompted, click **I understand my workflows, go ahead and enable them**
@@ -129,7 +119,7 @@ Some gyms release the full week's schedule at once (e.g. every Sunday). In that 
 | `BOOKING_WEEKDAY` | `sunday` |
 | `AVAILABLE_DAYS` | `7` |
 
-The workflow still wakes up every day because GitHub Actions schedules cannot be changed by repository variables, but AutoWOD will skip immediately on the other days before installing dependencies or solving any CAPTCHA.
+The workflow still wakes up every day because GitHub Actions schedules cannot be changed by repository variables, but AutoWOD will skip immediately on the other days before installing dependencies or launching the browser.
 
 You can also trigger the tool manually whenever you need:
 
@@ -159,17 +149,17 @@ Manual runs always run immediately, even when `BOOKING_FREQUENCY=weekly`.
 - Add the class name to your variable: `MONDAY=18:00|CrossFit`
 - The name match is not case-sensitive
 
-**Captcha errors**
-- Check that your `TWO_CAPTCHA_API_KEY` secret is correct
-- Make sure your 2Captcha account has credit remaining
+**WODBuster starts showing a CAPTCHA again**
+- WODBuster does not currently show a CAPTCHA on login, so AutoWOD needs no CAPTCHA service or API key
+- AutoWOD keeps its 2Captcha fallback in case the check returns. If that happens, create a 2Captcha account, add credit, and save its API key as the `TWO_CAPTCHA_API_KEY` repository secret
 
 ---
 
 ## Privacy & cost
 
-- Your email, password, and API key are stored as encrypted GitHub secrets — only your workflow can read them
+- Your email and password are stored as encrypted GitHub secrets — only your workflow can read them
 - GitHub Actions is free for public repositories
-- 2Captcha costs roughly $0.001 per solve. The bot skips the CAPTCHA entirely on runs where all sessions are already booked, so most daily runs are free
+- AutoWOD currently requires no paid service
 
 ---
 

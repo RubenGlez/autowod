@@ -1,7 +1,7 @@
 {
   "name": "autowod",
   "version": "2.0.0",
-  "description": "An automated reservation system for workout sessions using Puppeteer and 2Captcha",
+  "description": "An automated reservation system for WODBuster workout sessions using Puppeteer",
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
