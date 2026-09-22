@@ -100,9 +100,9 @@ Go to **Settings → Secrets and variables → Actions → Variables tab**, clic
 
 Set the `BOOKING_TIME` variable to any `HH:MM` in Spain time — `22:30` if you leave it unset. Daylight saving is handled for you.
 
-The workflow wakes up a few hours early on purpose. GitHub's scheduler is a queue, not an alarm clock: a `cron` entry regularly starts 1–2 hours after the time you asked for, and sometimes doesn't fire at all. So AutoWOD starts early, installs everything while it waits, then sleeps until `BOOKING_TIME` and books on the dot. The run you see in the Actions tab will therefore be "in progress" for a while before anything happens — that's the wait, not a hang.
+The workflow wakes up several hours early on purpose. GitHub's scheduler is a queue, not an alarm clock: a `cron` entry regularly starts 2–3 hours after the time you asked for, and sometimes doesn't fire at all. So AutoWOD starts early, installs everything while it waits, then sleeps until `BOOKING_TIME` and books on the dot. The run you see in the Actions tab will therefore be "in progress" for hours before anything happens — that's the wait, not a hang.
 
-If `BOOKING_TIME` is more than about three hours after the times in the `schedule:` block of `.github/workflows/daily-reservation.yml`, move those `cron` lines earlier (they are in UTC) so there is still enough margin. The run summary warns you when GitHub started a run too late to hit the window.
+The `cron` lines in `.github/workflows/daily-reservation.yml` (in UTC) are set to fire about five and three hours before a 22:30 booking. If you move `BOOKING_TIME` much earlier, move those lines earlier too so the margin survives GitHub's queue. The run summary warns you when a run started too late to hit the window.
 
 ---
 

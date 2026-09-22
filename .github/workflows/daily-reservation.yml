@@ -3,13 +3,15 @@ run-name: "🏋️ AutoWOD – ${{ github.event_name == 'workflow_dispatch' && '
 
 on:
   schedule:
-    # GitHub's scheduler is a best-effort queue: these runs have historically
-    # started 50-130 minutes after their cron time, and the lag keeps growing.
-    # So we fire early and the job sleeps until the exact booking time
-    # (BOOKING_TIME, Europe/Madrid — DST included). Two crons because GitHub
-    # also drops scheduled runs outright every few days.
+    # GitHub's scheduler is a best-effort queue: over September 2026 these runs
+    # started 113-177 minutes after their cron time, and the lag keeps growing.
+    # So we fire hours early and the job sleeps until the exact booking time
+    # (BOOKING_TIME, Europe/Madrid — DST included). The margins below are 5h
+    # and 3h in summer, 6h and 4h in winter. Two crons because GitHub also
+    # drops scheduled runs outright every few days — the second only matters
+    # when the first never fires, so it gets a margin of its own.
+    - cron: '30 15 * * *'
     - cron: '30 17 * * *'
-    - cron: '30 19 * * *'
 
   # Run it manually from the Actions tab whenever you need to.
   # Useful when your gym opens the whole week at once — trigger once and
@@ -33,7 +35,7 @@ jobs:
     name: Book Workout Session
     runs-on: ubuntu-latest
     # Long enough to cover the wait for BOOKING_TIME plus the booking itself.
-    timeout-minutes: 340
+    timeout-minutes: 420
 
     steps:
       - name: 📥 Get latest code
@@ -50,10 +52,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Never wait longer than this. Anything above it means GitHub started
-          # us so late that the clock already rolled past midnight in Madrid —
-          # the booking window is behind us, so go now instead of idling a day.
-          MAX_WAIT_SECONDS=$(( 5 * 3600 ))
+          # Never wait longer than this. It sits well above the largest margin
+          # a cron above can ask for (6h) and well below a full day, so the only
+          # thing that trips it is GitHub starting us so late that the clock
+          # rolled past midnight in Madrid — the window is behind us by then,
+          # so go now instead of idling until tomorrow night.
+          MAX_WAIT_SECONDS=$(( 12 * 3600 ))
 
           # How late a run may start before the summary flags it as a problem.
           LATE_GRACE_SECONDS=$(( 15 * 60 ))
