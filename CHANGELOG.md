@@ -5,17 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0] - 2026-09-22
 
 ### Fixed
-- Bookings are now sent at the configured local time instead of whenever GitHub's scheduler got around to it. Scheduled runs had been starting 50-130 minutes after their `cron` time; the workflow now fires hours early, warms up the runner, and sleeps until the exact booking moment (Europe/Madrid, DST included).
+- Bookings are now sent at the configured local time instead of whenever GitHub's scheduler got around to it. Scheduled runs had been starting 113-177 minutes after their `cron` time, which pushed a 22:30 booking past midnight. The workflow now fires hours early, installs and warms everything while it waits, then sleeps until the exact booking moment (Europe/Madrid, DST included).
 
 ### Added
 - `BOOKING_TIME` repository variable (default `22:30`) to choose when the booking is sent.
 
 ### Changed
-- Replaced the two daylight-saving `cron` entries with two earlier ones kept purely as redundancy, since GitHub occasionally drops a scheduled run entirely.
-- Manual runs no longer queue behind a scheduled run that is waiting for its booking window.
+- The two `cron` entries no longer exist to cover summer and winter time — the booking moment is resolved in `Europe/Madrid` at run time, so daylight saving needs no schedule changes. They now sit at 15:30 and 17:30 UTC as redundancy against GitHub dropping a scheduled run, each with enough margin to absorb the queue delay on its own.
+- Manual runs no longer wait for `BOOKING_TIME`, and no longer queue behind a scheduled run that is waiting for its window.
+- The run summary flags a run that started too late to hit the booking window, with a 15-minute grace so the backup run doesn't trip it nightly.
+
+### Security
+- Overrode `js-yaml` to `^4.3.2`, clearing two high-severity advisories reachable through `puppeteer > cosmiconfig`. The override lives in `pnpm-workspace.yaml`, which is where pnpm 11 reads it from.
 
 ## [2.0.1] - 2026-07-28
 
