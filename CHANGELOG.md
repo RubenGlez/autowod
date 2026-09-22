@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Bookings are now sent at the configured local time instead of whenever GitHub's scheduler got around to it. Scheduled runs had been starting 50-130 minutes after their `cron` time; the workflow now fires hours early, warms up the runner, and sleeps until the exact booking moment (Europe/Madrid, DST included).
+
+### Added
+- `BOOKING_TIME` repository variable (default `22:30`) to choose when the booking is sent.
+
+### Changed
+- Replaced the two daylight-saving `cron` entries with two earlier ones kept purely as redundancy, since GitHub occasionally drops a scheduled run entirely.
+- Manual runs no longer queue behind a scheduled run that is waiting for its booking window.
+
 ## [2.0.1] - 2026-07-28
 
 ### Changed

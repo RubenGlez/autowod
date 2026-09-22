@@ -71,13 +71,14 @@ TUESDAY=18:00|Endurance
 | `AVAILABLE_DAYS` | `7` | Book up to 7 days in advance (default if not set) |
 | `BOOKING_FREQUENCY` | `daily` | Use `daily` to try every day, or `weekly` to book only once per week |
 | `BOOKING_WEEKDAY` | `sunday` | Used with `BOOKING_FREQUENCY=weekly`; choose `monday` through `sunday` |
+| `BOOKING_TIME` | `22:30` | Time of day (Spain time, 24h `HH:MM`) when the booking is sent |
 
 ### 4. Enable GitHub Actions
 
 1. Click the **Actions** tab in your forked repository
 2. If prompted, click **I understand my workflows, go ahead and enable them**
 
-That's it! By default, the tool will now run automatically every evening around 22:30 Spain time.
+That's it! By default, the tool will now run automatically every evening at 22:30 Spain time (summer and winter alike — you don't have to touch anything when the clocks change).
 
 ---
 
@@ -94,6 +95,14 @@ A green checkmark means the run completed. Check the summary card to see which s
 ## Changing your schedule
 
 Go to **Settings → Secrets and variables → Actions → Variables tab**, click the repository variable you want to change (e.g. `MONDAY`), update the value, and save. The next run will pick it up automatically.
+
+### Changing the time bookings are sent
+
+Set the `BOOKING_TIME` variable to any `HH:MM` in Spain time — `22:30` if you leave it unset. Daylight saving is handled for you.
+
+The workflow wakes up a few hours early on purpose. GitHub's scheduler is a queue, not an alarm clock: a `cron` entry regularly starts 1–2 hours after the time you asked for, and sometimes doesn't fire at all. So AutoWOD starts early, installs everything while it waits, then sleeps until `BOOKING_TIME` and books on the dot. The run you see in the Actions tab will therefore be "in progress" for a while before anything happens — that's the wait, not a hang.
+
+If `BOOKING_TIME` is more than about three hours after the times in the `schedule:` block of `.github/workflows/daily-reservation.yml`, move those `cron` lines earlier (they are in UTC) so there is still enough margin. The run summary warns you when GitHub started a run too late to hit the window.
 
 ---
 
@@ -119,7 +128,7 @@ Some gyms release the full week's schedule at once (e.g. every Sunday). In that 
 | `BOOKING_WEEKDAY` | `sunday` |
 | `AVAILABLE_DAYS` | `7` |
 
-The workflow still wakes up every day because GitHub Actions schedules cannot be changed by repository variables, but AutoWOD will skip immediately on the other days before installing dependencies or launching the browser.
+The workflow still wakes up every day because GitHub Actions schedules cannot be changed by repository variables, but AutoWOD will skip immediately on the other days — before waiting for the booking window, installing dependencies or launching the browser.
 
 You can also trigger the tool manually whenever you need:
 
@@ -128,7 +137,7 @@ You can also trigger the tool manually whenever you need:
 3. In the *Days to book ahead* field, enter the number of days you want to cover (e.g. `7`)
 4. Click **Run workflow**
 
-Manual runs always run immediately, even when `BOOKING_FREQUENCY=weekly`.
+Manual runs always run immediately — they don't wait for `BOOKING_TIME`, and they don't queue behind a scheduled run that is still waiting for its window, even when `BOOKING_FREQUENCY=weekly`.
 
 ---
 
