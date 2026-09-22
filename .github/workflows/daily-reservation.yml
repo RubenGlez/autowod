@@ -55,6 +55,9 @@ jobs:
           # the booking window is behind us, so go now instead of idling a day.
           MAX_WAIT_SECONDS=$(( 5 * 3600 ))
 
+          # How late a run may start before the summary flags it as a problem.
+          LATE_GRACE_SECONDS=$(( 15 * 60 ))
+
           frequency="$(echo "${BOOKING_FREQUENCY:-daily}" | tr '[:upper:]' '[:lower:]' | xargs)"
           target_day="$(echo "${BOOKING_WEEKDAY:-sunday}" | tr '[:upper:]' '[:lower:]' | xargs)"
           booking_time="$(echo "${BOOKING_TIME:-22:30}" | xargs)"
@@ -87,6 +90,11 @@ jobs:
           elif [ "$wait_seconds" -gt 0 ]; then
             wait_until="$target_epoch"
             late_note="Will book at $booking_time (Europe/Madrid), in $(( wait_seconds / 60 )) min."
+          elif [ "$wait_seconds" -ge "-$LATE_GRACE_SECONDS" ]; then
+            # The backup cron's run waits its turn in the concurrency queue and
+            # starts moments after the first one books. That is the design
+            # working, not a delay — don't cry wolf about it every night.
+            late_note="Booking window already open (started $(( -wait_seconds / 60 )) min after $booking_time, Europe/Madrid) — booking right now."
           else
             late_note="⚠️ GitHub started this run $(( -wait_seconds / 60 )) min after $booking_time (Europe/Madrid) — booking right now. If this keeps happening, move the cron times in this workflow earlier."
           fi
