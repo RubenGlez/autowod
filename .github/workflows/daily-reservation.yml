@@ -10,8 +10,12 @@ on:
     # and 3h in summer, 6h and 4h in winter. Two crons because GitHub also
     # drops scheduled runs outright every few days — the second only matters
     # when the first never fires, so it gets a margin of its own.
-    - cron: '30 15 * * *'
-    - cron: '30 17 * * *'
+    - cron: '00 11 * * *'
+    - cron: '30 12 * * *'
+    #- cron: '30 15 * * *'
+    #- cron: '30 17 * * *'
+
+
 
   # Run it manually from the Actions tab whenever you need to.
   # Useful when your gym opens the whole week at once — trigger once and
