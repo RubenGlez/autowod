@@ -9,10 +9,10 @@ Managed by doctier — do not edit between the markers.
 
 Read these for project context:
 
-- `.harness/engineering/architecture.md`
-- `.harness/engineering/implementation-plan.md`
-- `.harness/product/product.md`
-- `.harness/product/roadmap.md`
+- `.rubstack/engineering/architecture.md`
+- `.rubstack/engineering/implementation-plan.md`
+- `.rubstack/product/product.md`
+- `.rubstack/product/roadmap.md`
 <!-- doctier:end -->
 
 ## Release
