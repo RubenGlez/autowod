@@ -1,9 +1,9 @@
 version: 1
 
-# .harness/ is the private doc store: encrypted in git, decrypted on checkout.
+# .rubstack/ is the private doc store: encrypted in git, decrypted on checkout.
 # Prototype/spike code is sensitive scratch: never committed, dies with the worktree.
 docs:
-  - path: ".harness/**"
+  - path: ".rubstack/**"
     visibility: private
     lifetime: durable
 
