@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-11-17
+
+### Fixed
+- Logging in works again. Since 11 November 2026 every run failed right after `Logging in...` with `Navigation timeout of 60000 ms exceeded`, because WODBuster now updates the login page in place instead of reloading it. The bot now waits for whichever happens first: a page load, a redirect, or the login form being replaced. A rejected login now fails with an explicit "Login didn't go through" message instead of a generic timeout. Thanks to @dquintanaco1994 for the fix.
+
+### Security
+- Upgraded `puppeteer` to 25.16.0 and `vite` to ^8.1.6, and pinned patched `brace-expansion`, `nanoid` and `source-map-js`, clearing the critical and high advisories reported by `pnpm audit`.
+
 ## [2.1.0] - 2026-09-22
 
 ### Fixed
