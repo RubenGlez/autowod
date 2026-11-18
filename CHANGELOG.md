@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.2] - 2026-11-18
 
 ### Fixed
 - Bookings land on time again. GitHub was starting scheduled runs 6–7.5 hours late, past the 22:30 window, so runs booked nothing or booked after midnight. The workflow now fires at 09:27 and 12:27 UTC (off the hour, away from the :00 rush in GitHub's queue) and waits for `BOOKING_TIME` through a relay: since a job can't run past 6 hours, a run sleeps up to 5 hours and then starts a fresh run of itself, which carries on waiting. Needs no extra secrets or setup.
