@@ -45,6 +45,10 @@ async function waitUntilMovedOn(
     .catch(() => {});
 }
 
+export function isLoginPage(url: string): boolean {
+  return new URL(url).pathname.toLowerCase().startsWith('/account/login');
+}
+
 export async function login(
   page: Page,
   email: string,
@@ -62,12 +66,17 @@ export async function login(
     await waitUntilMovedOn(page, DEVICE_CHOICE, null, 30000);
   }
 
-  // Still looking at the login form: the login didn't go through.
+  // Still on the login page or form: the login didn't go through. The form
+  // check alone isn't enough — WODBuster hides it mid-submit, and we once
+  // reported "logged in" while still at wodbuster.com/account/login.aspx.
   const form = await page.$(EMAIL_INPUT).catch(() => null);
   const where = new URL(page.url());
-  if (form && (await form.isVisible().catch(() => false))) {
+  if (
+    isLoginPage(page.url()) ||
+    (form && (await form.isVisible().catch(() => false)))
+  ) {
     throw new Error(
-      `Login didn't go through: WODBuster still shows the login form at ${where.host}${where.pathname}`
+      `Login didn't go through: WODBuster still shows the login page at ${where.host}${where.pathname}`
     );
   }
   console.log(`🔐 Logged in — now at ${where.host}${where.pathname}`);

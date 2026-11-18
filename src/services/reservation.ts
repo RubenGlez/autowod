@@ -7,6 +7,7 @@ import {
   WeekDay,
 } from '../types';
 import { availableDays } from '../config';
+import { gymToday } from './date';
 
 export function parsePreferenceValue(value: string | null): {
   time: string | null;
@@ -18,9 +19,7 @@ export function parsePreferenceValue(value: string | null): {
 }
 
 export async function goToReservations(page: Page): Promise<void> {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const todayInSeconds = Math.floor(today.getTime() / 1000);
+  const todayInSeconds = Math.floor(gymToday().getTime() / 1000);
 
   const currentUrl = page.url();
   const currentDomain = new URL(currentUrl).origin;

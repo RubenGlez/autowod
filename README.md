@@ -100,9 +100,11 @@ Go to **Settings → Secrets and variables → Actions → Variables tab**, clic
 
 Set the `BOOKING_TIME` variable to any `HH:MM` in Spain time — `22:30` if you leave it unset. Daylight saving is handled for you.
 
-The workflow wakes up several hours early on purpose. GitHub's scheduler is a queue, not an alarm clock: a `cron` entry regularly starts 2–3 hours after the time you asked for, and sometimes doesn't fire at all. So AutoWOD starts early, installs everything while it waits, then sleeps until `BOOKING_TIME` and books on the dot. The run you see in the Actions tab will therefore be "in progress" for hours before anything happens — that's the wait, not a hang.
+The workflow wakes up many hours early on purpose. GitHub's scheduler is a queue, not an alarm clock: a `cron` entry can start 6–7 hours after the time you asked for (and that delay keeps growing), and sometimes doesn't fire at all. So AutoWOD starts in the morning and waits until `BOOKING_TIME` to book on the dot.
 
-The `cron` lines in `.github/workflows/daily-reservation.yml` (in UTC) are set to fire about five and three hours before a 22:30 booking. If you move `BOOKING_TIME` much earlier, move those lines earlier too so the margin survives GitHub's queue. The run summary warns you when a run started too late to hit the window.
+A single GitHub Actions job can't run longer than 6 hours, so the wait is a relay: a run that starts too early sleeps for up to 5 hours, then starts a fresh run of the same workflow ("Relay to a fresh run" in the log), which carries on waiting. Those hand-overs start within seconds — only scheduled runs sit in GitHub's queue. Expect two or three *Daily Reservation* runs per day in the Actions tab, each "in progress" for hours; that's the wait, not a hang. The last one installs everything and books. No extra setup is needed: the workflow uses its own built-in token.
+
+The `cron` lines in `.github/workflows/daily-reservation.yml` (in UTC) fire at 09:00 and 12:00. That covers any `BOOKING_TIME` from early afternoon to midnight; if you book much earlier in the day, move them earlier too. The run summary warns you when a run started too late to hit the window.
 
 ---
 
@@ -137,7 +139,7 @@ You can also trigger the tool manually whenever you need:
 3. In the *Days to book ahead* field, enter the number of days you want to cover (e.g. `7`)
 4. Click **Run workflow**
 
-Manual runs always run immediately — they don't wait for `BOOKING_TIME`, and they don't queue behind a scheduled run that is still waiting for its window, even when `BOOKING_FREQUENCY=weekly`.
+Manual runs always run immediately (leave *Wait for BOOKING_TIME* unticked; the relay uses it) — they don't wait for `BOOKING_TIME`, and they don't queue behind a scheduled run that is still waiting for its window, even when `BOOKING_FREQUENCY=weekly`.
 
 ---
 
