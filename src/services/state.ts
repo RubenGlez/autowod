@@ -6,6 +6,7 @@ import {
   WeekDay,
 } from '../types';
 import { availableDays, reservationsPreferences } from '../config';
+import { gymToday } from './date';
 
 const STATE_FILE = 'booking-state.json';
 
@@ -23,8 +24,7 @@ export function saveState(state: BookingState): void {
 }
 
 function pruneOldDates(state: BookingState): BookingState {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  const today = gymToday();
   return Object.fromEntries(
     Object.entries(state).filter(([date]) => new Date(date) >= today)
   );
@@ -43,8 +43,7 @@ export function getUpcomingBookableDates(): string[] {
   const dates: string[] = [];
 
   for (let i = 0; i < availableDays; i++) {
-    const d = new Date();
-    d.setUTCHours(0, 0, 0, 0);
+    const d = gymToday();
     d.setUTCDate(d.getUTCDate() + i);
     const weekDay = weekDayNames[d.getUTCDay()] as WeekDay;
     if (reservationsPreferences[weekDay]) {

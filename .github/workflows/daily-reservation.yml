@@ -3,15 +3,17 @@ run-name: "🏋️ AutoWOD – ${{ github.event_name == 'workflow_dispatch' && '
 
 on:
   schedule:
-    # GitHub's scheduler is a best-effort queue: over September 2026 these runs
-    # started 113-177 minutes after their cron time, and the lag keeps growing.
-    # So we fire hours early and the job sleeps until the exact booking time
-    # (BOOKING_TIME, Europe/Madrid — DST included). The margins below are 5h
-    # and 3h in summer, 6h and 4h in winter. Two crons because GitHub also
-    # drops scheduled runs outright every few days — the second only matters
-    # when the first never fires, so it gets a margin of its own.
-    - cron: '30 15 * * *'
-    - cron: '30 17 * * *'
+    # GitHub's scheduler is a best-effort queue: in September 2026 these runs
+    # started 2-3h after their cron time, by November 2026 6-7.5h late. So we
+    # fire very early and wait for the exact booking time (BOOKING_TIME,
+    # Europe/Madrid — DST included). A job can't run longer than 6h, so a run
+    # that is too early sleeps a few hours and hands over to a fresh run of
+    # this workflow (see "Relay" below); manual dispatches start in seconds,
+    # unlike scheduled ones. Margins before a 22:30 booking: 11.5h and 8.5h in
+    # summer, 12.5h and 9.5h in winter. Two crons because GitHub also drops
+    # scheduled runs outright every few days.
+    - cron: '0 9 * * *'
+    - cron: '0 12 * * *'
 
   # Run it manually from the Actions tab whenever you need to.
   # Useful when your gym opens the whole week at once — trigger once and
@@ -22,20 +24,32 @@ on:
         description: 'Days to book ahead (leave empty to use the AVAILABLE_DAYS variable)'
         required: false
         default: ''
+      wait_for_window:
+        description: 'Wait for BOOKING_TIME instead of booking right away (used by the relay; leave off for a manual run)'
+        type: boolean
+        required: false
+        default: false
 
-# Scheduled runs share one queue so the two crons can't both wake up and book
-# the same sessions at BOOKING_TIME. Manual runs get their own group so they
-# never sit behind a scheduled run that is still waiting for its window.
+# The relay below starts the next run of this workflow, which needs actions: write.
+permissions:
+  actions: write
+  contents: read
+
+# Scheduled runs (and the relayed runs they hand over to) share one queue so
+# the two crons can't both wake up and book the same sessions at BOOKING_TIME.
+# Manual runs get their own group so they never sit behind a scheduled run
+# that is still waiting for its window.
 concurrency:
-  group: reservation-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'scheduled' }}
+  group: reservation-${{ (github.event_name == 'workflow_dispatch' && !inputs.wait_for_window) && github.run_id || 'scheduled' }}
   cancel-in-progress: false
 
 jobs:
   book-session:
     name: Book Workout Session
     runs-on: ubuntu-latest
-    # Long enough to cover the wait for BOOKING_TIME plus the booking itself.
-    timeout-minutes: 420
+    # GitHub-hosted jobs stop at 6h anyway. A run waits at most 5h in-job
+    # (MAX_IN_JOB_WAIT_SECONDS below); longer waits are relayed.
+    timeout-minutes: 360
 
     steps:
       - name: 📥 Get latest code
@@ -48,16 +62,21 @@ jobs:
           BOOKING_WEEKDAY: ${{ vars.BOOKING_WEEKDAY || 'sunday' }}
           BOOKING_TIME: ${{ vars.BOOKING_TIME || '22:30' }}
           EVENT_NAME: ${{ github.event_name }}
+          WAIT_FOR_WINDOW: ${{ inputs.wait_for_window && 'true' || 'false' }}
           TZ_NAME: Europe/Madrid
         run: |
           set -euo pipefail
 
           # Never wait longer than this. It sits well above the largest margin
-          # a cron above can ask for (6h) and well below a full day, so the only
-          # thing that trips it is GitHub starting us so late that the clock
-          # rolled past midnight in Madrid — the window is behind us by then,
-          # so go now instead of idling until tomorrow night.
-          MAX_WAIT_SECONDS=$(( 12 * 3600 ))
+          # a cron above can ask for (12.5h) and well below a full day, so the
+          # only thing that trips it is GitHub starting us so late that the
+          # clock rolled past midnight in Madrid — the window is behind us by
+          # then, so go now instead of idling until tomorrow night.
+          MAX_WAIT_SECONDS=$(( 18 * 3600 ))
+
+          # Longest wait a single run takes on (jobs die at 6h). Anything longer
+          # is relayed: sleep, then start a fresh run that carries on waiting.
+          MAX_IN_JOB_WAIT_SECONDS=$(( 5 * 3600 ))
 
           # How late a run may start before the summary flags it as a problem.
           LATE_GRACE_SECONDS=$(( 15 * 60 ))
@@ -86,8 +105,14 @@ jobs:
           target_epoch="$(TZ="$TZ_NAME" date -d "$today_in_madrid $booking_time" +%s)"
           wait_seconds=$(( target_epoch - $(date +%s) ))
 
+          # A relayed run behaves like a scheduled one; a plain manual run books now.
+          manual_now=false
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$WAIT_FOR_WINDOW" != "true" ]; then
+            manual_now=true
+          fi
+
           wait_until=""
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$manual_now" = "true" ]; then
             late_note="Manual run — booking immediately instead of waiting for $booking_time."
           elif [ "$wait_seconds" -gt "$MAX_WAIT_SECONDS" ]; then
             late_note="⚠️ GitHub started this run so late that $booking_time (Europe/Madrid) has already passed — booking right now."
@@ -111,7 +136,8 @@ jobs:
             today="$(TZ="$TZ_NAME" date +%A | tr '[:upper:]' '[:lower:]')"
           fi
 
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          relay_after=""
+          if [ "$manual_now" = "true" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             echo "Manual run requested — booking script will run." >> "$GITHUB_STEP_SUMMARY"
           elif [ "$frequency" = "weekly" ] && [ "$today" != "$target_day" ]; then
@@ -123,14 +149,51 @@ jobs:
               echo "Unknown BOOKING_FREQUENCY '$BOOKING_FREQUENCY'; defaulting to daily."
               echo "Unknown BOOKING_FREQUENCY '$BOOKING_FREQUENCY'; defaulted to daily for this run." >> "$GITHUB_STEP_SUMMARY"
             fi
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            if [ -n "$wait_until" ] && [ "$wait_seconds" -gt "$MAX_IN_JOB_WAIT_SECONDS" ]; then
+              # Too early to wait it out in this job: sleep, then hand over,
+              # leaving the next run at least 4h (and at most 5h) to wait.
+              relay_sleep=$(( wait_seconds - 4 * 3600 ))
+              [ "$relay_sleep" -gt "$MAX_IN_JOB_WAIT_SECONDS" ] && relay_sleep="$MAX_IN_JOB_WAIT_SECONDS"
+              relay_after=$(( $(date +%s) + relay_sleep ))
+              wait_until=""
+              late_note="$booking_time (Europe/Madrid) is $(( wait_seconds / 60 )) min away — too long for one run. Sleeping $(( relay_sleep / 60 )) min, then handing over to a new run."
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+            fi
             echo "AutoWOD will run today ($today, Europe/Madrid)." >> "$GITHUB_STEP_SUMMARY"
             echo "$late_note" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+          echo "relay_after=$relay_after" >> "$GITHUB_OUTPUT"
           echo "wait_until=$wait_until" >> "$GITHUB_OUTPUT"
           echo "booking_time=$booking_time" >> "$GITHUB_OUTPUT"
           echo "$late_note"
+
+      # Relay: GitHub queues scheduled runs for hours, but a dispatch starts in
+      # seconds. So an early run sleeps here, then starts a fresh run of this
+      # workflow that picks up the wait. Nothing else in this run executes.
+      - name: 🔁 Relay to a fresh run
+        if: steps.schedule-gate.outputs.relay_after != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELAY_AFTER: ${{ steps.schedule-gate.outputs.relay_after }}
+          AVAILABLE_DAYS_INPUT: ${{ inputs.available_days }}
+          WORKFLOW_REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          remaining=$(( RELAY_AFTER - $(date +%s) ))
+          if [ "$remaining" -gt 0 ]; then
+            echo "Sleeping ${remaining}s before handing over..."
+            sleep "$remaining"
+          fi
+          gh workflow run daily-reservation.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$WORKFLOW_REF" \
+            -f wait_for_window=true \
+            -f available_days="$AVAILABLE_DAYS_INPUT"
+          echo "Handed over to a new run — see the Actions tab."
+          echo "Handed over to a new run of this workflow." >> "$GITHUB_STEP_SUMMARY"
 
       - name: 📦 Install pnpm
         if: steps.schedule-gate.outputs.should_run == 'true'
