@@ -104,7 +104,7 @@ The workflow wakes up many hours early on purpose. GitHub's scheduler is a queue
 
 A single GitHub Actions job can't run longer than 6 hours, so the wait is a relay: a run that starts too early sleeps for up to 5 hours, then starts a fresh run of the same workflow ("Relay to a fresh run" in the log), which carries on waiting. Those hand-overs start within seconds — only scheduled runs sit in GitHub's queue. Expect two or three *Daily Reservation* runs per day in the Actions tab, each "in progress" for hours; that's the wait, not a hang. The last one installs everything and books. No extra setup is needed: the workflow uses its own built-in token.
 
-The `cron` lines in `.github/workflows/daily-reservation.yml` (in UTC) fire at 09:00 and 12:00. That covers any `BOOKING_TIME` from early afternoon to midnight; if you book much earlier in the day, move them earlier too. The run summary warns you when a run started too late to hit the window.
+The `cron` lines in `.github/workflows/daily-reservation.yml` (in UTC) fire at 09:27 and 12:27 — off the hour on purpose, since GitHub's queue is busiest at :00. That covers any `BOOKING_TIME` from early afternoon to midnight; if you book much earlier in the day, move them earlier too. The run summary warns you when a run started too late to hit the window.
 
 ---
 

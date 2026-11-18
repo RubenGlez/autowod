@@ -9,11 +9,12 @@ on:
     # Europe/Madrid — DST included). A job can't run longer than 6h, so a run
     # that is too early sleeps a few hours and hands over to a fresh run of
     # this workflow (see "Relay" below); manual dispatches start in seconds,
-    # unlike scheduled ones. Margins before a 22:30 booking: 11.5h and 8.5h in
-    # summer, 12.5h and 9.5h in winter. Two crons because GitHub also drops
-    # scheduled runs outright every few days.
-    - cron: '0 9 * * *'
-    - cron: '0 12 * * *'
+    # unlike scheduled ones. Margins before a 22:30 booking: 11h and 8h in
+    # summer, 12h and 9h in winter. Two crons because GitHub also drops
+    # scheduled runs outright every few days. Odd minutes on purpose: GitHub's
+    # queue is busiest on the hour, so those runs get delayed the most.
+    - cron: '27 9 * * *'
+    - cron: '27 12 * * *'
 
   # Run it manually from the Actions tab whenever you need to.
   # Useful when your gym opens the whole week at once — trigger once and
