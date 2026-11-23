@@ -3,7 +3,9 @@ export type ButtonText =
   | 'Finalizada'
   | 'Cambiar'
   | 'Entrenar'
-  | 'Avisar';
+  | 'Avisar'
+  // Already on the waiting list (the button cancels the alert).
+  | 'No avisar';
 
 export type WeekDay =
   | 'monday'

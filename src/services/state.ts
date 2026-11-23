@@ -77,6 +77,7 @@ export function terminalStatusFromResult(
   if (state === 'Cambiar') return 'different-time';
   if (state === 'Entrenar' && success) return 'booked';
   if (state === 'Avisar' && success) return 'waitlisted';
+  if (state === 'No avisar') return 'waitlisted';
   return null;
 }
 

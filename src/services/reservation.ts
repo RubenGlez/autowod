@@ -25,13 +25,31 @@ export async function goToReservations(page: Page): Promise<void> {
   const currentDomain = new URL(currentUrl).origin;
 
   await page.goto(`${currentDomain}/athlete/reservas.aspx?t=${todayInSeconds}`);
+  await waitForSlots(page);
+}
+
+// WODBuster renders a day's classes from script after the page loads, so the
+// slots aren't there yet when goto() returns — reading straight away reported
+// "no slot" for the first day. Wait for the slots, or for the countdown a day
+// shows until its booking window opens, or give up after `ms`.
+async function waitForSlots(page: Page, ms = 15000): Promise<void> {
+  await page
+    .waitForFunction(
+      () =>
+        !!document.querySelector('[data-magellan-destination]') ||
+        document.body.innerText.includes('Disponible en'),
+      { timeout: ms, polling: 250 }
+    )
+    .catch(() => {});
 }
 
 export async function getReservationState(
   reservationButton: ElementHandle<Element>
 ): Promise<ButtonText | null> {
-  const buttonText = await reservationButton.evaluate(el => el.textContent);
-  return buttonText as ButtonText | null;
+  const buttonText = await reservationButton.evaluate(el =>
+    el.textContent?.trim()
+  );
+  return (buttonText || null) as ButtonText | null;
 }
 
 export function getReservationKey(time: string): string {
@@ -42,6 +60,7 @@ export async function goToNextDay(page: Page): Promise<void> {
   await page.waitForSelector('a.next');
   await page.click('a.next');
   await page.waitForNetworkIdle({ timeout: 5000 }).catch(() => {});
+  await waitForSlots(page);
 }
 
 export async function getWeekDayFromUrl(page: Page): Promise<string> {
@@ -191,6 +210,10 @@ export async function makeReservation(
       result.message = `ℹ️ ${pageTitleText} - You're already booked`;
       result.success = false;
       break;
+    case 'No avisar':
+      result.message = `ℹ️ ${pageTitleText} - You're already on the waiting list`;
+      result.success = false;
+      break;
     default:
       result.message = `⚠️ ${pageTitleText} - Unrecognised button "${String(
         state
@@ -219,6 +242,7 @@ function writeJobSummary(
     if (result.state === 'Entrenar' && result.success) return '✅ Booked';
     if (result.state === 'Avisar' && result.success) return '⏳ Waitlisted';
     if (result.state === 'Borrar') return 'ℹ️ Already booked';
+    if (result.state === 'No avisar') return 'ℹ️ Already waitlisted';
     if (result.state === 'Finalizada') return '❌ Class already finished';
     if (result.state === 'Cambiar') return '⚠️ Booked at a different time';
     return '🔍 Slot not found';
@@ -277,7 +301,10 @@ export async function processReservations(
       skipped++;
     } else if (result.state === 'Entrenar' && result.success) {
       booked++;
-    } else if (result.state === 'Avisar' && result.success) {
+    } else if (
+      (result.state === 'Avisar' && result.success) ||
+      result.state === 'No avisar'
+    ) {
       waitlisted++;
     } else if (result.state === 'Borrar') {
       alreadyBooked++;

@@ -34,6 +34,10 @@ describe('terminalStatusFromResult', () => {
     expect(terminalStatusFromResult(makeResult('Avisar', true))).toBe('waitlisted');
   });
 
+  it('maps No avisar (already on the waiting list) to waitlisted', () => {
+    expect(terminalStatusFromResult(makeResult('No avisar', false))).toBe('waitlisted');
+  });
+
   it('returns null for failed Entrenar (booking error)', () => {
     expect(terminalStatusFromResult(makeResult('Entrenar', false))).toBeNull();
   });
