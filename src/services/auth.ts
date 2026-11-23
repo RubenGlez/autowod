@@ -1,10 +1,14 @@
 import { Page } from 'puppeteer';
+import { baseUrl } from '../config';
 
 const EMAIL_INPUT = '#body_body_CtlLogin_IoEmail';
 const PASSWORD_INPUT = '#body_body_CtlLogin_IoPassword';
 const LOGIN_BUTTON = '#body_body_CtlLogin_CtlAceptar';
-// "Don't remember this browser": second button of the device question.
-const DEVICE_CHOICE = '#body_body_CtlUp label.button:nth-of-type(2)';
+// The device question ("remember this browser?") WODBuster sometimes shows
+// after the password step. Its answers are styled labels inside this panel.
+const DEVICE_PANEL = '#body_body_CtlUp';
+const DEVICE_CHOICE = `${DEVICE_PANEL} label.button`;
+const LOGIN_ATTEMPTS = 3;
 
 // Waits until the page has moved on from a step. Older WODBuster reloaded the
 // whole page after each click; newer versions swap the step in place (or
@@ -49,35 +53,127 @@ export function isLoginPage(url: string): boolean {
   return new URL(url).pathname.toLowerCase().startsWith('/account/login');
 }
 
+// Still on the login page or form: the login didn't go through. The form
+// check alone isn't enough — WODBuster hides it mid-submit, and we once
+// reported "logged in" while still at wodbuster.com/account/login.aspx.
+async function stillOnLogin(page: Page): Promise<boolean> {
+  if (isLoginPage(page.url())) return true;
+  const form = await page.$(EMAIL_INPUT).catch(() => null);
+  return !!form && (await form.isVisible().catch(() => false));
+}
+
+// What the login page is showing, for the run log. Visible text and control
+// names only — never the page's HTML: this repo, and so its run logs, are public.
+async function describeLoginPage(page: Page, email: string): Promise<string> {
+  const info = await page
+    .evaluate((panel: string) => {
+      const root = document.querySelector('form') ?? document.body;
+      const text = root.innerText.replace(/\s+/g, ' ').trim();
+      const controls = Array.from(
+        root.querySelectorAll('a, button, label, input[type=submit]')
+      )
+        .filter(el => !!(el as HTMLElement).offsetParent)
+        .slice(0, 15)
+        .map(el => {
+          const label = (
+            (el as HTMLElement).innerText ||
+            (el as HTMLInputElement).value ||
+            ''
+          ).trim();
+          const id = el.id ? `#${el.id}` : '';
+          const cls = el.className
+            ? `.${String(el.className).trim().split(/\s+/).join('.')}`
+            : '';
+          return `${el.tagName.toLowerCase()}${id}${cls} "${label.slice(0, 40)}"`;
+        });
+      return {
+        title: document.title,
+        panel: !!document.querySelector(panel),
+        text: text.slice(0, 400),
+        controls,
+      };
+    }, DEVICE_PANEL)
+    .catch(() => null);
+  if (!info) return 'page could not be inspected';
+  const mask = (v: string) => (email ? v.split(email).join('<email>') : v);
+  return [
+    `title: "${info.title}"`,
+    `device panel: ${info.panel ? 'present' : 'absent'}`,
+    `text: ${mask(info.text)}`,
+    `controls: ${info.controls.map(mask).join(' | ') || 'none'}`,
+  ].join('\n   ');
+}
+
+// Answers the device question, if WODBuster asks it. Since WODBuster moved
+// the login to async postbacks, clicking "don't remember" sometimes leaves
+// the page sitting on the question (every failed run since Nov 2026 waited out
+// exactly this step). So try each answer in turn, then fall back to opening
+// the user area directly: after the password step the session is usually
+// already authenticated, and WODBuster sends it on to the gym from there.
+async function answerDeviceQuestion(page: Page): Promise<void> {
+  const choices = [];
+  for (const choice of await page.$$(DEVICE_CHOICE).catch(() => [])) {
+    if (await choice.isVisible().catch(() => false)) choices.push(choice);
+  }
+  if (choices.length === 0) return;
+
+  // "Don't remember this browser" (second) first, then "remember" (first).
+  const ordered = choices.length > 1 ? [choices[1], choices[0]] : choices;
+  for (const choice of ordered) {
+    const label = await choice
+      .evaluate(el => el.textContent?.trim() ?? '')
+      .catch(() => '');
+    console.log(`🖥️ WODBuster asked about this device — answering "${label}"`);
+    await choice.click().catch(() => {});
+    await waitUntilMovedOn(page, DEVICE_CHOICE, null, 15000);
+    if (!(await stillOnLogin(page))) return;
+  }
+
+  console.log(
+    '🖥️ The device question did not move on — opening the user area directly'
+  );
+  await page.goto(`${baseUrl}/user/`).catch(() => {});
+  await page.waitForNetworkIdle({ timeout: 5000 }).catch(() => {});
+}
+
+async function attemptLogin(
+  page: Page,
+  email: string,
+  password: string
+): Promise<boolean> {
+  await page.waitForSelector(EMAIL_INPUT, { visible: true, timeout: 30000 });
+  await page.type(EMAIL_INPUT, email);
+  await page.type(PASSWORD_INPUT, password);
+  await page.click(LOGIN_BUTTON);
+  await waitUntilMovedOn(page, EMAIL_INPUT, DEVICE_CHOICE, 45000);
+  await answerDeviceQuestion(page);
+  return !(await stillOnLogin(page));
+}
+
 export async function login(
   page: Page,
   email: string,
   password: string
 ): Promise<void> {
-  await page.type(EMAIL_INPUT, email);
-  await page.type(PASSWORD_INPUT, password);
-  await page.click(LOGIN_BUTTON);
-  await waitUntilMovedOn(page, EMAIL_INPUT, DEVICE_CHOICE, 45000);
+  for (let attempt = 1; attempt <= LOGIN_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      await new Promise(r => setTimeout(r, 5000));
+      await page.goto(`${baseUrl}/account/login.aspx`);
+    }
 
-  // Answer "don't remember this browser" if WODBuster asks.
-  const deviceChoice = await page.$(DEVICE_CHOICE).catch(() => null);
-  if (deviceChoice && (await deviceChoice.isVisible().catch(() => false))) {
-    await deviceChoice.click();
-    await waitUntilMovedOn(page, DEVICE_CHOICE, null, 30000);
-  }
+    if (await attemptLogin(page, email, password)) {
+      const where = new URL(page.url());
+      console.log(`🔐 Logged in — now at ${where.host}${where.pathname}`);
+      return;
+    }
 
-  // Still on the login page or form: the login didn't go through. The form
-  // check alone isn't enough — WODBuster hides it mid-submit, and we once
-  // reported "logged in" while still at wodbuster.com/account/login.aspx.
-  const form = await page.$(EMAIL_INPUT).catch(() => null);
-  const where = new URL(page.url());
-  if (
-    isLoginPage(page.url()) ||
-    (form && (await form.isVisible().catch(() => false)))
-  ) {
-    throw new Error(
-      `Login didn't go through: WODBuster still shows the login page at ${where.host}${where.pathname}`
+    const where = new URL(page.url());
+    console.log(
+      `⚠️ Login attempt ${attempt}/${LOGIN_ATTEMPTS} didn't go through (at ${where.host}${where.pathname}):\n   ${await describeLoginPage(page, email)}`
     );
   }
-  console.log(`🔐 Logged in — now at ${where.host}${where.pathname}`);
+
+  throw new Error(
+    `Login didn't go through after ${LOGIN_ATTEMPTS} attempts: WODBuster still shows the login page`
+  );
 }

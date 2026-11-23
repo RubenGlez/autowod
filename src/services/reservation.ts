@@ -123,11 +123,24 @@ export async function makeReservation(
   );
 
   if (!reservationButton) {
+    // List the slots the page does show, so a log tells "no class at that
+    // time" apart from "the day isn't open yet" or a changed page layout.
+    const slots = await page
+      .$$eval('[data-magellan-destination]', els =>
+        els.map(el => {
+          const key = el.getAttribute('data-magellan-destination');
+          const button = el.querySelector('button')?.textContent?.trim();
+          return button ? `${key} (${button})` : key;
+        })
+      )
+      .catch(() => []);
     return {
       success: false,
       message: `🔍 No reservation slot found for ${await getDateFromUrl(
         page
-      )} at ${time}`,
+      )} at ${time} — page shows ${
+        slots.length ? slots.join(', ') : 'no slots'
+      }`,
       weekDay,
       time,
     };
