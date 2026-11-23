@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-11-23
+
+### Fixed
+- Logging in no longer fails about half the time. After the password, WODBuster sometimes asks whether to remember the device, and one of its answers can leave the page sitting on the question; every such run failed after a 30-second wait with "Login didn't go through". The bot now tries both answers, then opens the user area directly, and retries the whole login up to 3 times. When it still fails, the log shows what the login page says.
+- Bookings are recognised again on GitHub's runners. WODBuster now picks its language from the browser, so the booking buttons came back in English and matched none of the expected states. The bot now asks for Spanish pages.
+- The first day of a run is no longer always "No reservation slot found". WODBuster draws a day's classes after the page loads, and the bot read the page before they appeared. It now waits for the classes, or for the countdown shown before a day opens.
+- Classes whose workout is already published can be booked. A "Wod" button that shows the workout sits before the booking button, and the bot was reading it as the booking state.
+
+### Added
+- "No avisar" is recognised as already being on the waiting list, so it counts as waitlisted instead of showing an empty message.
+- "No reservation slot found" now lists the slots the page does show, and an unexpected button text is reported by name.
+
 ## [2.1.2] - 2026-11-18
 
 ### Fixed
