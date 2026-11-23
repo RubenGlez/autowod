@@ -117,8 +117,10 @@ async function answerDeviceQuestion(page: Page): Promise<void> {
   }
   if (choices.length === 0) return;
 
-  // "Don't remember this browser" (second) first, then "remember" (first).
-  const ordered = choices.length > 1 ? [choices[1], choices[0]] : choices;
+  // "Remember this device" (first) moves on; "don't remember" (second) has
+  // been seen to leave the page on the question, so it's only the fallback.
+  // Remembering is harmless: every run starts from a fresh browser profile.
+  const ordered = choices.length > 1 ? [choices[0], choices[1]] : choices;
   for (const choice of ordered) {
     const label = await choice
       .evaluate(el => el.textContent?.trim() ?? '')

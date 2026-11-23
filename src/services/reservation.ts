@@ -191,6 +191,11 @@ export async function makeReservation(
       result.message = `ℹ️ ${pageTitleText} - You're already booked`;
       result.success = false;
       break;
+    default:
+      result.message = `⚠️ ${pageTitleText} - Unrecognised button "${String(
+        state
+      ).trim()}" at ${time} — not booked`;
+      result.success = false;
   }
 
   return result;
