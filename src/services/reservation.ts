@@ -92,8 +92,10 @@ async function findReservationButton(
   reservationKey: string,
   className: string | null
 ): Promise<ElementHandle<Element> | null> {
+  // Once a class's workout is published, a "Wod" button (class `wod`) that
+  // only shows the workout sits before its booking button — skip it.
   const buttons = await page.$$(
-    `div[data-magellan-destination="${reservationKey}"] button`
+    `div[data-magellan-destination="${reservationKey}"] button:not(.wod)`
   );
 
   if (buttons.length === 0) return null;
